@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio-to-Text Transcription</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* * Modern Dark Theme UI for Audio Transcriber
+         * Font: Montserrat (Bold for headings/buttons)
+         * Color Palette: Dark blues and greys with a vibrant accent color.
+        */
+        body {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 400;
+            background-color: #1a202c; /* Dark slate background */
+            color: #e2e8f0; /* Light grey text */
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background-color: #2d3748; /* Darker container background */
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            padding: 40px;
+            width: 90%;
+            max-width: 600px;
+            border: 1px solid #4a5568;
+        }
+
+        h1 {
+            color: #ffffff;
+            font-weight: 700; /* Bold */
+            margin-bottom: 20px;
+        }
+
+        p {
+            color: #a0aec0; /* Lighter grey for paragraph text */
+            font-size: 16px;
+            margin-bottom: 30px;
+        }
+
+        #upload-form {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+
+        /* Hide the default file input */
+        .file-input-wrapper input[type="file"] {
+            font-size: 100px;
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        /* Style the custom button */
+        .file-input-label {
+            background-color: #4a5568;
+            color: #e2e8f0;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 700; /* Bold */
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .file-input-label:hover {
+            background-color: #718096;
+        }
+        
+        #file-name {
+            margin-top: 10px;
+            font-style: italic;
+            color: #a0aec0;
+            height: 20px; /* Reserve space to prevent layout shift */
+        }
+
+        #transcribe-btn {
+            background: linear-gradient(45deg, #4299e1, #3182ce);
+            color: #fff;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 700; /* Bold */
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.3s ease;
+            display: none; /* Initially hidden */
+            margin-top: 15px;
+            box-shadow: 0 4px 15px rgba(49, 130, 206, 0.3);
+        }
+
+        #transcribe-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(49, 130, 206, 0.4);
+        }
+        
+        #result-container {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #1a202c; /* Match body background */
+            border: 1px solid #4a5568;
+            border-radius: 8px;
+            text-align: left;
+        }
+        
+        #result-container h3 {
+             color: #ffffff;
+             font-weight: 700; /* Bold */
+        }
+
+        #output {
+            color: #e2e8f0;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Audio-to-Text Transcription</h1>
+        <p>Upload an audio file to instantly convert it to text.</p>
+        <form id="upload-form" enctype="multipart/form-data">
+            <div class="file-input-wrapper">
+                <label for="file" class="file-input-label">Choose Audio File</label>
+                <input type="file" id="file" name="file" accept="audio/*">
+            </div>
+            <div id="file-name"></div>
+            <button type="submit" id="transcribe-btn">Transcribe</button>
+        </form>
+        <div id="result-container" style="display: none;">
+            <h3>Transcription Result:</h3>
+            <p id="output"></p>
+        </div>
+    </div>
+    <script>
+        // Get references to the DOM elements
+        const fileInput = document.getElementById('file');
+        const fileNameDisplay = document.getElementById('file-name');
+        const transcribeBtn = document.getElementById('transcribe-btn');
+        const uploadForm = document.getElementById('upload-form');
+        const resultContainer = document.getElementById('result-container');
+        const outputText = document.getElementById('output');
+
+        // Event listener for when a file is selected
+        fileInput.onchange = function () {
+            const fileName = this.files[0] ? this.files[0].name : "No file chosen";
+            fileNameDisplay.textContent = 'Selected: ' + fileName;
+            transcribeBtn.style.display = 'block'; // Show the transcribe button
+        };
+
+        // Event listener for form submission
+        uploadForm.onsubmit = function (e) {
+            e.preventDefault(); // Prevent the default form submission
+
+            // Prepare form data for the request
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            
+            // Show the result container and a loading message
+            resultContainer.style.display = 'block';
+            outputText.textContent = 'Transcribing, please wait...';
+
+            // Use the Fetch API to send the file to the server
+            fetch('/send', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                // Check if the response is ok (status in the range 200-299)
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json(); // Parse the JSON from the response
+            })
+            .then(data => {
+                // Display the transcription or an error message
+                if (data.text) {
+                    outputText.textContent = data.text;
+                } else {
+                    outputText.textContent = 'Error: ' + data.error;
+                }
+            })
+            .catch(error => {
+                // Handle any errors that occurred during the fetch
+                console.error('Error:', error);
+                outputText.textContent = 'An unexpected error occurred. Please check the console and try again.';
+            });
+        };
+    </script>
+</body>
+</html>
